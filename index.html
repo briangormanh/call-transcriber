@@ -955,22 +955,30 @@
             {
                 name: 'Hoosier Hauler',
                 sheetId: '1GynGC-Kb5c2umvxfC_8nRzxJ68Kdn8kYORupsCe7haY',
-                url: 'https://docs.google.com/spreadsheets/d/1GynGC-Kb5c2umvxfC_8nRzxJ68Kdn8kYORupsCe7haY/edit'
+                url: 'https://docs.google.com/spreadsheets/d/1GynGC-Kb5c2umvxfC_8nRzxJ68Kdn8kYORupsCe7haY/edit',
+                categories: [] // TODO: Add Hoosier Hauler categories
             },
             {
                 name: 'Stockman Lawnscapes',
                 sheetId: '1A1SN5QVtF8pdYdpgZKPSdKkhxSEEzSWkcQzse5GOtU0',
-                url: 'https://docs.google.com/spreadsheets/d/1A1SN5QVtF8pdYdpgZKPSdKkhxSEEzSWkcQzse5GOtU0/edit'
+                url: 'https://docs.google.com/spreadsheets/d/1A1SN5QVtF8pdYdpgZKPSdKkhxSEEzSWkcQzse5GOtU0/edit',
+                categories: ['Lawn Care', 'Hardscaping', 'Outdoor Living', 'Erosion Control', 'Drainage', 'Winter Services', 'General Landscaping', 'Voicemail', 'Job Application', 'Other']
             }
             // Add more clients here:
-            // { name: 'Client Name', sheetId: 'SHEET_ID', url: 'FULL_URL' }
+            // { name: 'Client Name', sheetId: 'SHEET_ID', url: 'FULL_URL', categories: [] }
         ];
 
         // Google OAuth Client ID
         const GOOGLE_CLIENT_ID = '751776580622-ljmlv6rhl94o0ivommkdvpue8vm05i7u.apps.googleusercontent.com';
 
-        // AI Formula prompt for Google Sheets
-        const AI_PROMPT = "Read this call transcript and identify the main topic or service the caller is inquiring about. Reply with a short category label (2-4 words max), nothing else.";
+        // Build AI prompt based on client categories
+        function getAIPrompt(client) {
+            if (client && client.categories && client.categories.length > 0) {
+                const cats = client.categories.join(', ');
+                return `Categorize this call transcript. Reply with ONLY one of these categories: ${cats}. If it's a voicemail or job inquiry, use those categories. If unclear, reply "Other".`;
+            }
+            return "Read this call transcript and identify the main topic. Reply with a short category label (2-4 words max), nothing else.";
+        }
 
         // Column indexes will be determined dynamically based on sheet structure
         let TRANSCRIPT_COL = null;
@@ -1356,7 +1364,7 @@
                         range: `'${detectedSheetName}'!${colLetter(TRANSCRIPT_COL)}${r.rowIndex}:${colLetter(CATEGORY_COL)}${r.rowIndex}`,
                         values: [[
                             r.transcript,
-                            r.isError ? '' : `=AI("${AI_PROMPT}", ${colLetter(TRANSCRIPT_COL)}${r.rowIndex})`
+                            r.isError ? '' : `=AI("${getAIPrompt(selectedClient)}", ${colLetter(TRANSCRIPT_COL)}${r.rowIndex})`
                         ]]
                     }))
                 ];
@@ -1521,7 +1529,7 @@
 
             results.forEach(result => {
                 const row = document.createElement('tr');
-                const formula = result.isError ? 'N/A' : `=AI("${AI_PROMPT}", ${colLetter(TRANSCRIPT_COL)}${result.rowIndex})`;
+                const formula = result.isError ? 'N/A' : `=AI("${getAIPrompt(selectedClient)}", ${colLetter(TRANSCRIPT_COL)}${result.rowIndex})`;
 
                 row.innerHTML = `
                     <td>${result.rowIndex}</td>
@@ -1554,7 +1562,7 @@
 
             results.forEach(r => {
                 const clean = r.transcript.replace(/\t/g, ' ').replace(/\n/g, ' ');
-                const formula = r.isError ? '' : `=AI("${AI_PROMPT}", ${colLetter(TRANSCRIPT_COL)}${r.rowIndex})`;
+                const formula = r.isError ? '' : `=AI("${getAIPrompt(selectedClient)}", ${colLetter(TRANSCRIPT_COL)}${r.rowIndex})`;
                 outputRows[r.rowIndex - 1] = [clean, formula];
             });
 
@@ -1572,7 +1580,7 @@
             let text = 'Row\tTranscript\tCategory\n';
             results.forEach(r => {
                 const clean = r.transcript.replace(/\t/g, ' ').replace(/\n/g, ' ');
-                const formula = r.isError ? 'N/A' : `=AI("${AI_PROMPT}", ${colLetter(TRANSCRIPT_COL)}${r.rowIndex})`;
+                const formula = r.isError ? 'N/A' : `=AI("${getAIPrompt(selectedClient)}", ${colLetter(TRANSCRIPT_COL)}${r.rowIndex})`;
                 text += `${r.rowIndex}\t${clean}\t${formula}\n`;
             });
 
@@ -1587,7 +1595,7 @@
             const csvContent = [
                 ['Row', 'Transcript', 'Category'],
                 ...results.map(r => {
-                    const formula = r.isError ? 'N/A' : `=AI("${AI_PROMPT}", ${colLetter(TRANSCRIPT_COL)}${r.rowIndex})`;
+                    const formula = r.isError ? 'N/A' : `=AI("${getAIPrompt(selectedClient)}", ${colLetter(TRANSCRIPT_COL)}${r.rowIndex})`;
                     return [r.rowIndex, r.transcript.replace(/"/g, '""'), formula];
                 })
             ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
