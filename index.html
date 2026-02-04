@@ -834,6 +834,7 @@
         let selectedClient = null;
         let googleAccessToken = null;
         let googleUser = null;
+        let detectedSheetName = 'Calls'; // Will be updated when loading sheet
 
         // ==================== DOM ELEMENTS ====================
         const deepgramKeyInput = document.getElementById('deepgramKey');
@@ -1033,14 +1034,38 @@
             loadSheetBtn.textContent = 'Loading...';
 
             try {
-                const csvUrl = `https://docs.google.com/spreadsheets/d/${selectedClient.sheetId}/gviz/tq?tqx=out:csv&sheet=Calls`;
-                const response = await fetch(csvUrl);
+                // Try different possible sheet names
+                const sheetNames = ['Calls', 'Sheet1', 'Call List', 'Data'];
+                let csvText = null;
 
-                if (!response.ok) {
-                    throw new Error('Failed to fetch sheet. Make sure it\'s shared publicly.');
+                for (const sheetName of sheetNames) {
+                    try {
+                        const csvUrl = `https://docs.google.com/spreadsheets/d/${selectedClient.sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+                        const response = await fetch(csvUrl);
+                        if (response.ok) {
+                            const text = await response.text();
+                            // Check if it has actual data (not just an error message)
+                            if (text && !text.includes('Error') && text.length > 50) {
+                                csvText = text;
+                                detectedSheetName = sheetName;
+                                break;
+                            }
+                        }
+                    } catch (e) {
+                        continue;
+                    }
                 }
 
-                const csvText = await response.text();
+                // If none of the named sheets worked, try the first sheet (no sheet parameter)
+                if (!csvText) {
+                    const csvUrl = `https://docs.google.com/spreadsheets/d/${selectedClient.sheetId}/gviz/tq?tqx=out:csv`;
+                    const response = await fetch(csvUrl);
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch sheet. Make sure it\'s shared publicly.');
+                    }
+                    csvText = await response.text();
+                    detectedSheetName = 'Sheet1'; // Default name
+                }
                 const rows = parseCSV(csvText);
 
                 if (rows.length < 2) throw new Error('Sheet appears to be empty');
@@ -1092,7 +1117,7 @@
                 const transcriptColLetter = colLetter(TRANSCRIPT_COL);
                 const categoryColLetter = colLetter(CATEGORY_COL);
                 document.getElementById('columnInfo').textContent =
-                    `Transcript → Column ${transcriptColLetter}, Category → Column ${categoryColLetter}`;
+                    `Sheet: "${detectedSheetName}" | Transcript → Column ${transcriptColLetter}, Category → Column ${categoryColLetter}`;
                 document.getElementById('columnInfo').style.display = 'block';
 
                 sheetPreview.classList.add('visible');
@@ -1117,11 +1142,11 @@
                 // Prepare batch update data - start with headers in row 1
                 const data = [
                     {
-                        range: `Calls!${colLetter(TRANSCRIPT_COL)}1:${colLetter(CATEGORY_COL)}1`,
+                        range: `'${detectedSheetName}'!${colLetter(TRANSCRIPT_COL)}1:${colLetter(CATEGORY_COL)}1`,
                         values: [['Transcript', 'Category']]
                     },
                     ...results.map(r => ({
-                        range: `Calls!${colLetter(TRANSCRIPT_COL)}${r.rowIndex}:${colLetter(CATEGORY_COL)}${r.rowIndex}`,
+                        range: `'${detectedSheetName}'!${colLetter(TRANSCRIPT_COL)}${r.rowIndex}:${colLetter(CATEGORY_COL)}${r.rowIndex}`,
                         values: [[
                             r.transcript,
                             r.isError ? '' : `=AI("${AI_PROMPT}", ${colLetter(TRANSCRIPT_COL)}${r.rowIndex})`
@@ -1232,11 +1257,8 @@
                 progressFill.style.width = `${(i / urlsToProcess.length) * 100}%`;
 
                 try {
-                    progressStatus.textContent = `Fetching audio ${i + 1}...`;
-                    const audioBlob = await fetchAudio(url);
-
                     progressStatus.textContent = `Transcribing ${i + 1}/${urlsToProcess.length}...`;
-                    const transcript = await transcribeAudio(audioBlob, deepgramKey);
+                    const transcript = await transcribeFromUrl(url, deepgramKey);
 
                     results.push({ url, rowIndex, transcript });
                 } catch (error) {
@@ -1263,27 +1285,16 @@
             }, 1000);
         }
 
-        async function fetchAudio(url) {
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                return await response.blob();
-            } catch (e) {
-                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-                const response = await fetch(proxyUrl);
-                if (!response.ok) throw new Error(`Failed to fetch audio: ${response.status}`);
-                return await response.blob();
-            }
-        }
-
-        async function transcribeAudio(audioBlob, deepgramKey) {
+        async function transcribeFromUrl(audioUrl, deepgramKey) {
+            // Use Deepgram's URL-based transcription - they fetch the audio directly
+            // This bypasses CORS issues since Deepgram's servers fetch the audio
             const response = await fetch('https://api.deepgram.com/v1/listen?model=nova-2&language=en&punctuate=true&smart_format=true', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Token ${deepgramKey}`,
-                    'Content-Type': audioBlob.type || 'audio/mpeg'
+                    'Content-Type': 'application/json'
                 },
-                body: audioBlob
+                body: JSON.stringify({ url: audioUrl })
             });
 
             if (!response.ok) {
