@@ -975,9 +975,9 @@
         function getAIPrompt(client) {
             if (client && client.categories && client.categories.length > 0) {
                 const cats = client.categories.join(', ');
-                return `Categorize this call transcript. Reply with ONLY one of these categories: ${cats}. If it's a voicemail or job inquiry, use those categories. If unclear, reply "Other".`;
+                return `Categorize this call transcript. Reply with ONLY one of these categories: ${cats}. If unclear, reply 'Other'.`;
             }
-            return "Read this call transcript and identify the main topic. Reply with a short category label (2-4 words max), nothing else.";
+            return `Categorize this call transcript. Reply with a short category label (2-4 words max), nothing else.`;
         }
 
         // Column indexes will be determined dynamically based on sheet structure
