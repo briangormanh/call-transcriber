@@ -472,6 +472,50 @@
             height: 6px;
         }
 
+        /* Instructions */
+        .instructions {
+            background: var(--paper-warm);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: 4px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .instructions-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--ink);
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .instructions ol {
+            margin: 0;
+            padding-left: 1.25rem;
+            font-size: 0.85rem;
+            color: var(--ink-light);
+        }
+
+        .instructions li {
+            margin-bottom: 0.4rem;
+            line-height: 1.5;
+        }
+
+        .instructions li:last-child {
+            margin-bottom: 0;
+        }
+
+        .instructions code {
+            background: white;
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.8rem;
+            border: 1px solid var(--border);
+        }
+
         .source-content {
             display: none;
         }
@@ -795,6 +839,15 @@
                     <h2 class="section-title">Results</h2>
                 </div>
 
+                <div class="instructions">
+                    <div class="instructions-title">Final Step</div>
+                    <ol>
+                        <li>Open your Google Sheet</li>
+                        <li>Select the entire Category column (with the <code>=AI()</code> formulas)</li>
+                        <li>Click <strong>Generate</strong> to classify each call</li>
+                    </ol>
+                </div>
+
             <div class="success-banner" id="successBanner">
                 <span>✓</span>
                 <span>Results written to Google Sheet! <a id="sheetLink" href="#" target="_blank">Open Sheet</a></span>
@@ -835,6 +888,23 @@
             <section class="section">
                 <div class="section-header">
                     <span class="section-number">01</span>
+                    <h2 class="section-title">Sheet Setup</h2>
+                </div>
+
+                <div class="instructions">
+                    <div class="instructions-title">Before You Start</div>
+                    <ol>
+                        <li>Import your CallRail spreadsheet into Google Sheets</li>
+                        <li>Delete the cover sheet</li>
+                        <li>Drag the <code>Calls</code> tab to the leftmost position</li>
+                        <li>Rename it with the month and year (e.g., <code>Jan 25</code>)</li>
+                    </ol>
+                </div>
+            </section>
+
+            <section class="section">
+                <div class="section-header">
+                    <span class="section-number">02</span>
                     <h2 class="section-title">API Configuration</h2>
                 </div>
 
